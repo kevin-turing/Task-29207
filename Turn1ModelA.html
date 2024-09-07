@@ -1,1 +1,116 @@
-T1MA
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sudoku with a Twist</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+<style>
+    body { font-family: 'Arial', sans-serif; }
+    #game-container {
+        width: 100%;
+        max-width: 500px;
+        margin: 20px auto;
+        text-align: center;
+        background: linear-gradient(45deg, #f3f3f3, #e0e0e0);
+        transition: background 2s linear;
+    }
+    .menu, #sudoku-board { margin: 20px; }
+    .cell {
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        font-size: 1.5em;
+        border: 1px solid #ccc;
+        background: white;
+        transition: transform 0.1s;
+    }
+    .cell:focus { 
+        transform: scale(1.1); 
+        z-index: 10; 
+    }
+    .rival { background: #ffcccc; }
+    .zen-mode { 
+        animation: colorChange 10s infinite alternate; 
+    }
+    @keyframes colorChange {
+        0% { background: #e6f3ff; }
+        100% { background: #ffe6f3; }
+    }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="menu">
+        <button onclick="startGame()">Play</button>
+        <button onclick="dailyChallenge()">Daily Challenge</button>
+        <button onclick="openSettings()">Settings</button>
+    </div>
+    <div id="sudoku-board" style="display:none;"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+let board = [];
+let solution = [];
+let currentDifficulty = 'medium';
+let isZenMode = false;
+
+function createBoard() {
+    $('#sudoku-board').html('').css('display', 'grid');
+    for(let i = 0; i < 9; i++) {
+        for(let j = 0; j < 9; j++) {
+            let cell = $('<input>')
+                .attr({type: 'number', min: '1', max: '9', class: 'cell', id: `cell-${i}-${j}`})
+                .on('focus', function() { $(this).select(); });
+            $('#sudoku-board').append(cell);
+        }
+    }
+}
+
+function generateSudoku(difficulty) {
+    // Simplified sudoku generation and solving logic would go here
+    // This includes placing initial numbers, solving, and removing numbers based on difficulty
+    board = /* generated board */;
+    solution = /* solved board */;
+    updateBoard();
+}
+
+function updateBoard() {
+    $('.cell').each(function() {
+        let [i, j] = $(this).attr('id').split('-').slice(1).map(Number);
+        $(this).val(board[i][j] || '');
+        if (board[i][j] && board[i][j] !== solution[i][j]) $(this).addClass('rival');
+    });
+    if (isZenMode) $('.cell').addClass('zen-mode');
+}
+
+function startGame() {
+    generateSudoku(currentDifficulty);
+}
+
+function dailyChallenge() {
+    // Fetch or generate a daily puzzle
+    startGame();
+}
+
+function openSettings() {
+    // Open settings menu to change difficulty, toggle Zen mode, etc.
+}
+
+// Additional functions for power-ups, hints, pause, etc. would be implemented here
+
+$(document).on('keydown', function(e) {
+    if(e.key >= '1' && e.key <= '9') {
+        // Handle number input
+    } else if(e.key === 'ArrowUp' || 'ArrowDown' || 'ArrowLeft' || 'ArrowRight') {
+        // Handle navigation
+    }
+});
+
+// Initialize game
+createBoard();
+</script>
+
+</body>
+</html>

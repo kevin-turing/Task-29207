@@ -1,1 +1,314 @@
-T1IR
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Sudoku Twist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(45deg, #f3ec78, #af4261);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        #game-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            gap: 1px;
+            margin: 20px 0;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .cell.selected {
+            background: #e6e6ff;
+            transform: scale(1.1);
+            z-index: 1;
+        }
+        .cell.rival { background: #ffcccc; }
+        .cell.powerup { background: #ccffcc; }
+        button {
+            margin: 5px;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #45a049; }
+        #zen-mode {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="menu">
+            <button onclick="startGame('easy')">Play Easy</button>
+            <button onclick="startGame('medium')">Play Medium</button>
+            <button onclick="startGame('hard')">Play Hard</button>
+            <button onclick="dailyChallenge()">Daily Challenge</button>
+            <button onclick="openSettings()">Settings</button>
+        </div>
+        <div id="sudoku-grid"></div>
+        <div id="controls">
+            <button onclick="pauseGame()">Pause</button>
+            <button onclick="useHint()">Hint</button>
+            <button onclick="usePowerUp()">Power-Up</button>
+        </div>
+        <button id="zen-mode" onclick="toggleZenMode()">Zen Mode</button>
+    </div>
+
+    <script>
+        let grid = [];
+        let solution = [];
+        let selectedCell = null;
+        let isPaused = false;
+        let zenMode = false;
+        let hintsLeft = 3;
+        let currentDifficulty = 'easy';
+
+        function createGrid() {
+            const sudokuGrid = document.getElementById('sudoku-grid');
+            sudokuGrid.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => selectCell(i, j));
+                    sudokuGrid.appendChild(cell);
+                }
+            }
+        }
+
+        function generateSudoku(difficulty) {
+            // Simple Sudoku generator (for demonstration)
+            grid = Array(9).fill().map(() => Array(9).fill(0));
+            solution = Array(9).fill().map(() => Array(9).fill(0));
+            
+            // Fill diagonal boxes
+            for (let i = 0; i < 9; i += 3) {
+                fillBox(i, i);
+            }
+            
+            // Solve the rest
+            solveSudoku(grid);
+            
+            // Copy solution
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    solution[i][j] = grid[i][j];
+                }
+            }
+            
+            // Remove numbers based on difficulty
+            let cellsToRemove = difficulty === 'easy' ? 40 : difficulty === 'medium' ? 50 : 60;
+            while (cellsToRemove > 0) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                if (grid[row][col] !== 0) {
+                    grid[row][col] = 0;
+                    cellsToRemove--;
+                }
+            }
+        }
+
+        function fillBox(row, col) {
+            let num;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    do {
+                        num = Math.floor(Math.random() * 9) + 1;
+                    } while (!isValid(row + i, col + j, num));
+                    grid[row + i][col + j] = num;
+                }
+            }
+        }
+
+        function isValid(row, col, num) {
+            for (let x = 0; x < 9; x++) {
+                if (grid[row][x] === num || grid[x][col] === num) {
+                    return false;
+                }
+            }
+            let boxRow = Math.floor(row / 3) * 3;
+            let boxCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (grid[boxRow + i][boxCol + j] === num) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function solveSudoku(board) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(row, col, num)) {
+                                board[row][col] = num;
+                                if (solveSudoku(board)) {
+                                    return true;
+                                }
+                                board[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function renderGrid() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, index) => {
+                const row = Math.floor(index / 9);
+                const col = index % 9;
+                cell.textContent = grid[row][col] || '';
+                cell.classList.remove('rival', 'powerup');
+                if (Math.random() < 0.05) { // 5% chance for rival or powerup
+                    cell.classList.add(Math.random() < 0.5 ? 'rival' : 'powerup');
+                }
+            });
+        }
+
+        function selectCell(row, col) {
+            if (isPaused) return;
+            if (selectedCell) {
+                document.querySelector(`[data-row="${selectedCell.row}"][data-col="${selectedCell.col}"]`).classList.remove('selected');
+            }
+            selectedCell = { row, col };
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('selected');
+            centerCell(cell);
+        }
+
+        function centerCell(cell) {
+            const container = document.getElementById('sudoku-grid');
+            const scrollLeft = cell.offsetLeft - (container.clientWidth / 2) + (cell.clientWidth / 2);
+            const scrollTop = cell.offsetTop - (container.clientHeight / 2) + (cell.clientHeight / 2);
+            container.scrollTo({
+                left: scrollLeft,
+                top: scrollTop,
+                behavior: 'smooth'
+            });
+        }
+
+        function startGame(difficulty) {
+            currentDifficulty = difficulty;
+            generateSudoku(difficulty);
+            renderGrid();
+            isPaused = false;
+            hintsLeft = 3;
+        }
+
+        function pauseGame() {
+            isPaused = !isPaused;
+            alert(isPaused ? 'Game Paused' : 'Game Resumed');
+        }
+
+        function useHint() {
+            if (hintsLeft > 0 && selectedCell) {
+                const { row, col } = selectedCell;
+                if (grid[row][col] === 0) {
+                    grid[row][col] = solution[row][col];
+                    renderGrid();
+                    hintsLeft--;
+                    alert(`Hint used! ${hintsLeft} hints remaining.`);
+                } else {
+                    alert('Selected cell already filled!');
+                }
+            } else {
+                alert('No hints left or no cell selected!');
+            }
+        }
+
+        function usePowerUp() {
+            if (selectedCell) {
+                const { row, col } = selectedCell;
+                for (let i = 0; i < 9; i++) {
+                    grid[row][i] = solution[row][i];
+                    grid[i][col] = solution[i][col];
+                }
+                renderGrid();
+                alert('Power-up used! Row and column filled.');
+            } else {
+                alert('No cell selected!');
+            }
+        }
+
+        function toggleZenMode() {
+            zenMode = !zenMode;
+            document.body.style.animation = zenMode ? 'gradientBG 5s ease infinite' : 'gradientBG 15s ease infinite';
+            alert(zenMode ? 'Zen Mode activated' : 'Zen Mode deactivated');
+        }
+
+        function dailyChallenge() {
+            const today = new Date().toISOString().split('T')[0];
+            alert(`Daily challenge for ${today} loaded!`);
+            startGame('medium'); // Assuming daily challenges are medium difficulty
+        }
+
+        function openSettings() {
+            const setting = prompt('Enter setting to change (sound/music/theme):');
+            const value = prompt(`Enter new value for ${setting}:`);
+            alert(`${setting} set to ${value}`);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (isPaused) return;
+            if (e.key >= '1' && e.key <= '9' && selectedCell) {
+                const { row, col } = selectedCell;
+                grid[row][col] = parseInt(e.key);
+                renderGrid();
+            } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedCell) {
+                const { row, col } = selectedCell;
+                let newRow = row, newCol = col;
+                switch(e.key) {
+                    case 'ArrowUp': newRow = Math.max(0, row - 1); break;
+                    case 'ArrowDown': newRow = Math.min(8, row + 1); break;
+                    case 'ArrowLeft': newCol = Math.max(0, col - 1); break;
+                    case 'ArrowRight': newCol = Math.min(8, col + 1); break;
+                }
+                selectCell(newRow, newCol);
+            }
+        });
+
+        createGrid();
+        startGame('easy');
+    </script>
+</body>
+</html>
